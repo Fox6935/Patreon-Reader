@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Patreon Reader",
+  "version": "0.1.0",
+  "description": "Capture Patreon post data from the page and export them to EPUB.",
+
+  "content_scripts": [
+    {
+      "matches": ["https://www.patreon.com/*"],
+      "js": [
+        "page-bridge.js",
+        "patreon-api.js",
+        "renderer.js",
+        "epub.js",
+        "ui.js",
+        "content.js"
+      ],
+      "css": ["styles.css"],
+      "run_at": "document_start"
+    }
+  ],
+
+  "host_permissions": [
+    "https://www.patreon.com/*",
+    "https://*.patreonusercontent.com/*",
+    "https://*.mux.com/*"
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["page-bridge.js"],
+      "matches": ["https://www.patreon.com/*"]
+    }
+  ],
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "patreon-reader@example.com"
+    }
+  }
+}
