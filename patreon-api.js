@@ -144,7 +144,8 @@
         if (!state.postsById.has(post.id)) {
           state.postsById.set(post.id, post);
           state.loadedPosts.push(post);
-          state.selectedPostIds.add(post.id);
+          // Selection is decided by the caller (content.js) so newly loaded
+          // posts can honor the active search filter.
           added += 1;
         } else {
           state.postsById.set(post.id, post);

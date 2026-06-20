@@ -4,6 +4,11 @@
   "version": "0.1.0",
   "description": "Capture Patreon post data from the page and export them to EPUB.",
 
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Patreon Reader"
+  },
+
   "content_scripts": [
     {
       "matches": ["https://www.patreon.com/*"],
@@ -12,10 +17,8 @@
         "patreon-api.js",
         "renderer.js",
         "epub.js",
-        "ui.js",
         "content.js"
       ],
-      "css": ["styles.css"],
       "run_at": "document_start"
     }
   ],

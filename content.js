@@ -1,7 +1,6 @@
 (() => {
   const root = (window.PRH = window.PRH || {});
   const { exportSelectedPostsAsEpub } = root.epub;
-  const ui = root.ui;
   const api = root.api;
 
   const STATE = {
@@ -34,43 +33,78 @@
     STATE.includedByKey = new Map();
     STATE.filterText = "";
     STATE.hasSeenValidPostsResponse = false;
-    ui.setProgress("");
   }
 
-  function getDerivedState() {
+  function setProgress(text) {
+    try {
+      chrome.runtime.sendMessage({ type: "PRH_PROGRESS", text: text || "" }, () => {
+        // Read lastError to avoid an unchecked-error warning when no popup is open.
+        void chrome.runtime.lastError;
+      });
+    } catch (e) {}
+  }
+
+  function trimmedPosts() {
+    return STATE.loadedPosts.map((post) => {
+      const attrs = post.attributes || {};
+      return {
+        id: post.id,
+        title: attrs.title || "",
+        published_at: attrs.published_at || "",
+        post_type: attrs.post_type || "",
+        url: attrs.url || "",
+        patreon_url: attrs.patreon_url || "",
+        content_teaser_text: attrs.content_teaser_text || "",
+      };
+    });
+  }
+
+  function snapshot() {
     return {
-      ...STATE,
       active: STATE.hasSeenValidPostsResponse,
       loading:
         STATE.loading ||
         (STATE.hasSeenValidPostsResponse &&
           !STATE.loadedPosts.length &&
           !STATE.campaignId),
+      totalPosts: STATE.totalPosts,
+      canLoadMore: !!STATE.nextUrl && !STATE.loading,
+      creatorName: STATE.creatorName,
+      selectedIds: [...STATE.selectedPostIds],
+      posts: trimmedPosts(),
     };
   }
 
-  function render() {
-    const derivedState = getDerivedState();
-    ui.update(derivedState, actions);
+  function getSelectedPosts() {
+    return STATE.loadedPosts.filter((post) =>
+      STATE.selectedPostIds.has(post.id),
+    );
+  }
 
-    const status = document.getElementById("prh-status");
-    if (!status) {
-      return;
+  function postMatchesFilter(post, filterText) {
+    const query = (filterText || "").trim().toLowerCase();
+    if (!query) {
+      return true;
     }
+    const attrs = post.attributes || {};
+    const haystack = [
+      attrs.title || "",
+      attrs.url || "",
+      attrs.patreon_url || "",
+      attrs.post_type || "",
+      attrs.content_teaser_text || "",
+    ]
+      .join("\n")
+      .toLowerCase();
+    return haystack.includes(query);
+  }
 
-    if (!STATE.hasSeenValidPostsResponse) {
-      status.textContent = "Waiting for posts…";
-      return;
+  function selectNewPosts(newPosts, filterText) {
+    for (const post of newPosts) {
+      if (postMatchesFilter(post, filterText)) {
+        STATE.selectedPostIds.add(post.id);
+      }
     }
-
-    if (STATE.loadedPosts.length) {
-      const loaded = STATE.loadedPosts.length;
-      const total = STATE.totalPosts || "?";
-      status.textContent = `${loaded}/${total}`;
-      return;
-    }
-
-    status.textContent = "Waiting…";
   }
 
   function handleNavigationChange() {
@@ -80,10 +114,9 @@
 
     STATE.currentUrl = location.href;
     resetState();
-    render();
   }
 
-  function handlePostsResponse(json) {
+  function handlePostsResponse(json, filterText) {
     if (!json) {
       return;
     }
@@ -103,9 +136,14 @@
       STATE.campaignId = incomingCampaignId;
     }
 
+    const before = new Set(STATE.postsById.keys());
     api.mergePostsResponseIntoState(STATE, json);
     STATE.hasSeenValidPostsResponse = true;
-    render();
+
+    // Page-side loads pass no filter and select everything; popup "Load more"
+    // passes its search so only matching new posts get selected.
+    const newPosts = STATE.loadedPosts.filter((post) => !before.has(post.id));
+    selectNewPosts(newPosts, filterText);
   }
 
   function getPayloadKey(payload) {
@@ -209,103 +247,57 @@
     return await res.json();
   }
 
-  const actions = {
-    openModal() {
-      if (!STATE.hasSeenValidPostsResponse) {
-        return;
-      }
+  async function loadMore(filterText) {
+    if (STATE.loading) {
+      return;
+    }
 
-      ui.openModal();
-      render();
-    },
+    if (!STATE.nextUrl) {
+      setProgress("No more posts.");
+      return;
+    }
 
-    closeModal() {
-      ui.closeModal();
-    },
+    const url = STATE.nextUrl;
+    STATE.loading = true;
+    setProgress("Loading more posts…");
 
-    setFilter(value) {
-      STATE.filterText = value || "";
-      render();
-    },
+    try {
+      const json = await fetchPostsPage(url);
+      handlePostsResponse(json, filterText);
 
-    toggleSelected(postId, checked) {
-      if (checked) {
-        STATE.selectedPostIds.add(postId);
-      } else {
-        STATE.selectedPostIds.delete(postId);
-      }
-      render();
-    },
+      const loaded = STATE.loadedPosts.length;
+      const total = STATE.totalPosts || "?";
+      setProgress(`Loaded ${loaded}/${total}`);
+    } catch (err) {
+      console.error(err);
+      setProgress(`Load failed: ${err.message}`);
+    } finally {
+      STATE.loading = false;
+    }
+  }
 
-    selectFiltered() {
-      for (const post of ui.getFilteredPosts(STATE)) {
-        STATE.selectedPostIds.add(post.id);
-      }
-      render();
-    },
+  async function exportEpub() {
+    const posts = getSelectedPosts();
 
-    deselectFiltered() {
-      for (const post of ui.getFilteredPosts(STATE)) {
-        STATE.selectedPostIds.delete(post.id);
-      }
-      render();
-    },
+    if (!posts.length) {
+      return { error: "No posts selected." };
+    }
 
-    async loadMore() {
-      if (STATE.loading) {
-        return;
-      }
+    try {
+      setProgress("Building EPUB…");
 
-      if (!STATE.nextUrl) {
-        ui.setProgress("No more posts.");
-        render();
-        return;
-      }
+      await exportSelectedPostsAsEpub(STATE, posts, (text) => {
+        setProgress(text);
+      });
 
-      const url = STATE.nextUrl;
-      STATE.loading = true;
-      ui.setProgress("Loading more posts…");
-      render();
-
-      try {
-        const json = await fetchPostsPage(url);
-        handlePostsResponse(json);
-
-        const loaded = STATE.loadedPosts.length;
-        const total = STATE.totalPosts || "?";
-        ui.setProgress(`Loaded ${loaded}/${total}`);
-      } catch (err) {
-        console.error(err);
-        ui.setProgress(`Load failed: ${err.message}`);
-      } finally {
-        STATE.loading = false;
-        render();
-      }
-    },
-
-    async exportEpub() {
-      try {
-        const posts = ui.getSelectedPosts(STATE);
-
-        if (!posts.length) {
-          window.alert("No posts selected.");
-          return;
-        }
-
-        ui.setProgress("Building EPUB…");
-
-        await exportSelectedPostsAsEpub(STATE, posts, (text) => {
-          ui.setProgress(text);
-        });
-
-        ui.setProgress(`Done: ${posts.length} posts`);
-      } catch (err) {
-        console.error(err);
-        window.alert(`EPUB export failed: ${err.message}`);
-        ui.setProgress("Export failed");
-      }
-    },
-  };
+      setProgress(`Done: ${posts.length} posts`);
+      return { ok: true, count: posts.length };
+    } catch (err) {
+      console.error(err);
+      setProgress("Export failed");
+      return { error: err.message };
+    }
+  }
 
   function installMessageListener() {
     window.addEventListener("message", (event) => {
@@ -329,11 +321,61 @@
     }
   }
 
+  function installPopupBridge() {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      const type = message?.type;
+
+      switch (type) {
+        case "GET_STATE": {
+          sendResponse(snapshot());
+          return false;
+        }
+
+        case "SET_SELECTION": {
+          if (message.checked) {
+            STATE.selectedPostIds.add(message.id);
+          } else {
+            STATE.selectedPostIds.delete(message.id);
+          }
+          sendResponse(snapshot());
+          return false;
+        }
+
+        case "SELECT_ALL": {
+          const ids = Array.isArray(message.ids) ? message.ids : [];
+          for (const id of ids) {
+            STATE.selectedPostIds.add(id);
+          }
+          sendResponse(snapshot());
+          return false;
+        }
+
+        case "DESELECT_ALL": {
+          STATE.selectedPostIds.clear();
+          sendResponse(snapshot());
+          return false;
+        }
+
+        case "LOAD_MORE": {
+          loadMore(message.filterText).then(() => sendResponse(snapshot()));
+          return true;
+        }
+
+        case "EXPORT": {
+          exportEpub().then((result) => sendResponse(result));
+          return true;
+        }
+
+        default:
+          return false;
+      }
+    });
+  }
+
   function init() {
     installMessageListener();
-    ui.createShell(actions);
+    installPopupBridge();
     resetState();
-    render();
     installSpaWatcher();
   }
 
