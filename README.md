@@ -13,6 +13,13 @@ A lightweight browser extension for Chrome and Firefox that captures Patreon pos
 - Select all filtered results (accumulates across searches) or deselect everything at once
 - Exports to an **EPUB 3** file
 
+## Repository layout
+
+- **`extension/`** — the extension itself (this is what you load/pack). Nothing
+  else ships in the build.
+- **`test-harness/`** — local automated tests (Node, zero-dependency). Never
+  bundled. See [test-harness/README.md](test-harness/README.md).
+
 ## Installation
 
 ### Chrome / Edge / Brave
@@ -20,13 +27,21 @@ A lightweight browser extension for Chrome and Firefox that captures Patreon pos
 1. Download or clone this repository
 2. Go to `chrome://extensions/`
 3. Enable **Developer mode** (top right)
-4. Click **Load unpacked** and select the folder containing `manifest.json`
+4. Click **Load unpacked** and select the **`extension/`** folder
 
 ### Firefox
 
 1. Go to `about:debugging#/runtime/this-firefox`
 2. Click **Load Temporary Add-on**
-3. Select the `manifest.json` file
+3. Select **`extension/manifest.json`**
+
+## Testing
+
+```bash
+node --test test-harness/
+```
+
+Requires Node 18+. No install step.
 
 ## How to Use
 
