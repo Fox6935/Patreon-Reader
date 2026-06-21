@@ -95,6 +95,19 @@
     render();
   }
 
+  function countSelectedOutsideFilter(filtered) {
+    const filteredIds = new Set(filtered.map((post) => post.id));
+    let count = 0;
+
+    for (const id of view.selectedIds) {
+      if (!filteredIds.has(id)) {
+        count += 1;
+      }
+    }
+
+    return count;
+  }
+
   function render() {
     if (!view.reachable) {
       els.status.textContent = "Open a Patreon creator page, then click the icon.";
@@ -116,9 +129,17 @@
 
     const loaded = snap.posts.length;
     const total = snap.totalPosts || "?";
-    els.status.textContent = snap.loading
+    const filtered = getFilteredPosts();
+    const selectedOutsideFilter = countSelectedOutsideFilter(filtered);
+
+    const statusMain = snap.loading
       ? `Loading… ${loaded}/${total}`
       : `${loaded}/${total} loaded`;
+
+    els.status.innerHTML =
+      selectedOutsideFilter > 0
+        ? `${escapeHtml(statusMain)} — ${view.selectedIds.size} selected<br><span class="prh-status-warning">${selectedOutsideFilter} selected post(s) outside filter</span>`
+        : `${escapeHtml(statusMain)} — ${view.selectedIds.size} selected`;
 
     setControlsEnabled(true);
 
@@ -129,7 +150,6 @@
         ? "Load more"
         : "No more posts";
 
-    const filtered = getFilteredPosts();
     els.summary.textContent = `${view.selectedIds.size} selected of ${loaded} loaded • ${filtered.length} shown`;
 
     els.list.innerHTML = "";
@@ -215,6 +235,14 @@
     chrome.runtime.onMessage.addListener((message) => {
       if (message?.type === "PRH_PROGRESS") {
         els.progress.textContent = message.text || "";
+        return;
+      }
+
+      if (message?.type === "PRH_STATE") {
+        if (message.snap) {
+          applySnapshot(message.snap);
+        }
+        return;
       }
     });
   }
