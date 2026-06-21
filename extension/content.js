@@ -76,6 +76,14 @@
     };
   }
 
+  function notifySnapshotChanged() {
+    try {
+      chrome.runtime.sendMessage({ type: "PRH_STATE", snap: snapshot() }, () => {
+        void chrome.runtime.lastError;
+      });
+    } catch (e) {}
+  }
+
   function getSelectedPosts() {
     return STATE.loadedPosts.filter((post) =>
       STATE.selectedPostIds.has(post.id),
@@ -111,6 +119,7 @@
 
     STATE.currentUrl = location.href;
     resetState();
+    notifySnapshotChanged();
   }
 
   function handlePostsResponse(json, filterText) {
@@ -141,6 +150,7 @@
     // passes its search so only matching new posts get selected.
     const newPosts = STATE.loadedPosts.filter((post) => !before.has(post.id));
     selectNewPosts(newPosts, filterText);
+    notifySnapshotChanged();
   }
 
   function getPayloadKey(payload) {
@@ -257,6 +267,7 @@
     const url = STATE.nextUrl;
     STATE.loading = true;
     setProgress("Loading more posts…");
+    notifySnapshotChanged();
 
     try {
       const json = await fetchPostsPage(url);
@@ -270,6 +281,7 @@
       setProgress(`Load failed: ${err.message}`);
     } finally {
       STATE.loading = false;
+      notifySnapshotChanged();
     }
   }
 
@@ -334,7 +346,9 @@
           } else {
             STATE.selectedPostIds.delete(message.id);
           }
-          sendResponse(snapshot());
+          const snap = snapshot();
+          notifySnapshotChanged();
+          sendResponse(snap);
           return false;
         }
 
@@ -343,13 +357,17 @@
           for (const id of ids) {
             STATE.selectedPostIds.add(id);
           }
-          sendResponse(snapshot());
+          const snap = snapshot();
+          notifySnapshotChanged();
+          sendResponse(snap);
           return false;
         }
 
         case "DESELECT_ALL": {
           STATE.selectedPostIds.clear();
-          sendResponse(snapshot());
+          const snap = snapshot();
+          notifySnapshotChanged();
+          sendResponse(snap);
           return false;
         }
 
@@ -373,6 +391,7 @@
     installMessageListener();
     installPopupBridge();
     resetState();
+    notifySnapshotChanged();
     installSpaWatcher();
   }
 
