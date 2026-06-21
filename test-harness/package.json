@@ -3,6 +3,6 @@
   "private": true,
   "description": "Local automated tests for the Patreon Reader extension (gitignored).",
   "scripts": {
-    "test": "node --test ."
+    "test": "node --test"
   }
 }
