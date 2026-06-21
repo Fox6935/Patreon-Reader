@@ -6,19 +6,11 @@ A lightweight browser extension for Chrome and Firefox that captures Patreon pos
 
 ## Features
 
-- Automatically detects posts while browsing a Patreon campaign — no buttons injected into the page
-- Open the post list from the extension's toolbar icon
+- Automatically detects posts while browsing a Patreon campaign
 - Load more posts on demand
 - Search and filter loaded posts
-- Select all filtered results (accumulates across searches) or deselect everything at once
+- Select individual posts or all filtered results
 - Exports to an **EPUB 3** file
-
-## Repository layout
-
-- **`extension/`** — the extension itself (this is what you load/pack). Nothing
-  else ships in the build.
-- **`test-harness/`** — local automated tests (Node, zero-dependency). Never
-  bundled. See [test-harness/README.md](test-harness/README.md).
 
 ## Installation
 
@@ -35,25 +27,15 @@ A lightweight browser extension for Chrome and Firefox that captures Patreon pos
 2. Click **Load Temporary Add-on**
 3. Select **`extension/manifest.json`**
 
-## Testing
-
-```bash
-node --test test-harness/
-```
-
-Requires Node 18+. No install step.
-
 ## How to Use
 
-1. Visit any Patreon creator's posts page and scroll so posts load
-2. Click the **Patreon Reader** toolbar icon to open the post list
-3. (Optional) Use the search box to filter, and **Load more** to fetch older posts
-4. Tick the posts you want — or **Select all** / **Deselect all**
+1. Visit any Patreon campaign page (creator page with `Recent Posts`)
+2. Click the extension's toolbar icon to open the post list
+3. (Optional) Click **Load more** and use the search box to filter
+4. Select the posts you want to export
 5. Click **Export EPUB**
 
-The EPUB file will download automatically. Tip: pin the extension (puzzle-piece
-menu) so the icon is always visible. When a search is active, **Select all** and
-**Load more** only select posts matching the search.
+The EPUB file will download automatically.
 
 ## Supported Content
 
