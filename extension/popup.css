@@ -117,6 +117,7 @@ body {
   background: #e6ddd2;
   color: #5f554b;
   font-size: 13px;
+  white-space: normal;
 }
 
 #prh-status:empty {
@@ -242,4 +243,10 @@ body {
   outline: none;
   border-radius: 6px;
   box-shadow: 0 0 0 3px rgba(214, 95, 16, 0.2);
+}
+
+.prh-status-warning {
+  color: #a12222;
+  font-style: italic;
+  font-weight: 700;
 }
