@@ -28,6 +28,7 @@ function setup() {
 
   loadModule("renderer.js", { window });
   loadModule("patreon-api.js", { window, location });
+  loadModule("search.js", { window });
 
   // Only the EXPORT test reaches epub; the rest never invoke these download stubs.
   const URLStub = Object.assign(function (...a) {
@@ -149,6 +150,17 @@ test("LOAD_MORE with a search only selects newly loaded matching posts", async (
 
   assert.equal(snap.posts.length, 5);
   assert.deepEqual(snap.selectedIds.sort(), ["102", "104"]);
+});
+
+test("LOAD_MORE honors query operators when selecting new posts", async () => {
+  const { feed, send, fetchQueue } = setup();
+  feed(fixtures.page1);
+  await send({ type: "DESELECT_ALL" });
+
+  // page2 = "Delta post" (104), "Epsilon post" (105); exclude the former.
+  fetchQueue.push(fixtures.page2);
+  const snap = await send({ type: "LOAD_MORE", filterText: "post -delta" });
+  assert.deepEqual(snap.selectedIds.sort(), ["105"]);
 });
 
 test("LOAD_MORE with no search selects all newly loaded posts", async () => {

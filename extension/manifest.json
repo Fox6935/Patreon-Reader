@@ -17,6 +17,7 @@
         "patreon-api.js",
         "renderer.js",
         "epub.js",
+        "search.js",
         "content.js"
       ],
       "run_at": "document_start"

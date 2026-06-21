@@ -47,22 +47,22 @@
 
   function getFilteredPosts() {
     const posts = view.snap?.posts || [];
-    const query = view.filterText.trim().toLowerCase();
-    if (!query) {
+    const groups = PRH.search.parseQuery(view.filterText);
+    if (!groups.length) {
       return posts;
     }
 
     return posts.filter((post) => {
       const haystack = [
-        post.title || "",
-        post.url || "",
-        post.patreon_url || "",
-        post.post_type || "",
-        post.content_teaser_text || "",
+        post.title,
+        post.url,
+        post.patreon_url,
+        post.post_type,
+        post.content_teaser_text,
       ]
-        .join("\n")
-        .toLowerCase();
-      return haystack.includes(query);
+        .map((x) => x || "")
+        .join("\n");
+      return PRH.search.matchHaystack(haystack, groups);
     });
   }
 

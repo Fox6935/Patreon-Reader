@@ -2,6 +2,7 @@
   const root = (window.PRH = window.PRH || {});
   const { exportSelectedPostsAsEpub } = root.epub;
   const api = root.api;
+  const search = root.search;
 
   const STATE = {
     campaignId: null,
@@ -82,21 +83,17 @@
   }
 
   function postMatchesFilter(post, filterText) {
-    const query = (filterText || "").trim().toLowerCase();
-    if (!query) {
-      return true;
-    }
     const attrs = post.attributes || {};
     const haystack = [
-      attrs.title || "",
-      attrs.url || "",
-      attrs.patreon_url || "",
-      attrs.post_type || "",
-      attrs.content_teaser_text || "",
+      attrs.title,
+      attrs.url,
+      attrs.patreon_url,
+      attrs.post_type,
+      attrs.content_teaser_text,
     ]
-      .join("\n")
-      .toLowerCase();
-    return haystack.includes(query);
+      .map((x) => x || "")
+      .join("\n");
+    return search.matchesQuery(haystack, filterText);
   }
 
   function selectNewPosts(newPosts, filterText) {

@@ -33,11 +33,14 @@ copies.
 | `renderer.test.js` | `escapeHtml`, `formatDate`, content-JSON → XHTML, image registration |
 | `api.test.js` | URL matching, response validation, state merge, pagination, dedup |
 | `epub.test.js` | Full EPUB export → valid ZIP with expected entries; image fetch/embed |
-| `content.test.js` | Popup ↔ content messaging: `GET_STATE`, `SET_SELECTION`, `SELECT_ALL` (accumulates), **`DESELECT_ALL` clears everything**, `LOAD_MORE` pagination, `EXPORT` |
+| `content.test.js` | Popup ↔ content messaging: `GET_STATE`, `SET_SELECTION`, `SELECT_ALL` (accumulates), **`DESELECT_ALL` clears everything**, `LOAD_MORE` pagination (+ operator-aware new-post selection), `EXPORT` |
+| `search.test.js` | `search.js` query operators: implicit AND, `-term` exclusion, `"exact phrase"`, `OR`/`\|` (binds tighter than AND), plus `parseQuery` grouping |
 
 `content.test.js` drives the real `chrome.runtime.onMessage` handler and feeds
 posts through the page-bridge `window.postMessage` path, so it covers the two
-recent changes end to end (popup-only UI + deselect-all clears all).
+recent changes end to end (popup-only UI + deselect-all clears all). Both
+`popup.js` and `content.js` filter through the shared `search.js` module, so the
+query operators are tested once in `search.test.js`.
 
 ## Not covered (needs a real browser)
 
