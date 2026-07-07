@@ -76,11 +76,34 @@ test("combines phrase, AND and exclusion", () => {
   assert.equal(matches('"quick brown" -fox'), false);
 });
 
+test("exclusion inside OR does not broaden: cat OR -dog narrows", () => {
+  // `cat OR -dog` is `cat AND NOT dog`, not `{has cat} OR {lacks dog}`.
+  assert.equal(matches("cat OR -dog", "cat dog"), false); // has dog -> excluded
+  assert.equal(matches("cat OR -dog", "cat fish"), true); // has cat, no dog
+  assert.equal(matches("cat OR -dog", "fish"), false); // lacks cat -> no match
+});
+
+test("exclusions accumulate as AND-NOT across groups", () => {
+  assert.equal(matches("alpha -image -fox", HAY), false); // has image -> excluded
+  assert.equal(matches("alpha -gamma -delta", HAY), true); // has neither
+});
+
 test("parseQuery groups OR terms and splits AND terms", () => {
   const search = load();
-  assert.deepEqual(search.parseQuery("a b OR c -d"), [
-    [{ value: "a", exclude: false }],
-    [{ value: "b", exclude: false }, { value: "c", exclude: false }],
-    [{ value: "d", exclude: true }],
-  ]);
+  assert.deepEqual(search.parseQuery("a b OR c -d"), {
+    groups: [
+      [{ value: "a", exclude: false }],
+      [{ value: "b", exclude: false }, { value: "c", exclude: false }],
+    ],
+    excludes: ["d"],
+  });
+});
+
+test("parseQuery pulls exclusions out of OR-groups", () => {
+  const search = load();
+  // `cat OR -dog` -> positive group [cat], exclusion dog (not joined into the OR group)
+  assert.deepEqual(search.parseQuery("cat OR -dog"), {
+    groups: [[{ value: "cat", exclude: false }]],
+    excludes: ["dog"],
+  });
 });

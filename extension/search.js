@@ -3,12 +3,13 @@
 
   // Google-flavored query subset:
   //   foo bar      implicit AND (every group must match)
-  //   foo -bar     exclusion
+  //   foo -bar     exclusion (AND-NOT), applied after OR-groups resolve
   //   "foo bar"    exact phrase (spaces kept literal)
   //   foo OR bar   OR; `|` is an alias. OR binds tighter than the implicit AND,
   //                so `a b OR c` means `a AND (b OR c)`.
   // OR must be uppercase to be an operator; lowercase "or" is a literal term.
-  // Exclusions only refine a positive search: a query with no include term
+  // Exclusions never participate in OR: `cat OR -dog` means `cat AND NOT dog`,
+  // not `{has cat} OR {lacks dog}`. A query with no include term at all
   // (e.g. just `-foo`) acts as no filter rather than hiding matches.
   function parseQuery(query) {
     const s = String(query || "");
@@ -56,11 +57,21 @@
       tokens.push({ value: value.toLowerCase(), exclude });
     }
 
+    // Exclusions are pulled out of the OR/AND group lattice entirely: a
+    // `-term` is a global AND-NOT applied after the positive OR-groups resolve,
+    // never a broadening member of an OR group. This keeps `-term` narrowing
+    // semantics consistent regardless of where in the query it appears.
     const groups = [];
+    const excludes = [];
     let joinPrev = false;
     for (const t of tokens) {
       if (t.op === "or") {
         joinPrev = groups.length > 0;
+        continue;
+      }
+      if (t.exclude) {
+        excludes.push(t.value);
+        joinPrev = false;
         continue;
       }
       if (joinPrev) {
@@ -70,17 +81,18 @@
         groups.push([t]);
       }
     }
-    return groups;
+    return { groups, excludes };
   }
 
-  function matchHaystack(haystack, groups) {
-    if (!groups.some((g) => g.some((t) => !t.exclude))) return true;
+  function matchHaystack(haystack, parsed) {
+    const { groups, excludes } = parsed;
+    if (groups.length === 0) return true;
     const hay = String(haystack || "").toLowerCase();
+    for (const ex of excludes) {
+      if (hay.includes(ex)) return false;
+    }
     for (const group of groups) {
-      const ok = group.some((t) =>
-        t.exclude ? !hay.includes(t.value) : hay.includes(t.value),
-      );
-      if (!ok) return false;
+      if (!group.some((t) => hay.includes(t.value))) return false;
     }
     return true;
   }

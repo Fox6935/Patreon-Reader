@@ -34,7 +34,7 @@ copies.
 | `api.test.js` | URL matching, response validation, state merge, pagination, dedup |
 | `epub.test.js` | Full EPUB export → valid ZIP with expected entries; image fetch/embed |
 | `content.test.js` | Popup ↔ content messaging: `GET_STATE`, `SET_SELECTION`, `SELECT_ALL` (accumulates), **`DESELECT_ALL` clears everything**, `LOAD_MORE` pagination (+ operator-aware new-post selection), `EXPORT` |
-| `search.test.js` | `search.js` query operators: implicit AND, `-term` exclusion, `"exact phrase"`, `OR`/`\|` (binds tighter than AND), plus `parseQuery` grouping |
+| `search.test.js` | `search.js` query operators: implicit AND, `-term` exclusion (AND-NOT, never broadens an OR group), `"exact phrase"`, `OR`/`\|` (binds tighter than AND), plus `parseQuery` grouping into `{groups, excludes}` |
 
 `content.test.js` drives the real `chrome.runtime.onMessage` handler and feeds
 posts through the page-bridge `window.postMessage` path, so it covers the two
