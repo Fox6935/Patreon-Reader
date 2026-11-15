@@ -19,22 +19,21 @@ A lightweight browser extension for Chrome and Firefox that captures Patreon pos
 1. Download or clone this repository
 2. Go to `chrome://extensions/`
 3. Enable **Developer mode** (top right)
-4. Click **Load unpacked** and select the folder containing `manifest.json`
+4. Click **Load unpacked** and select the **`extension/`** folder
 
 ### Firefox
 
 1. Go to `about:debugging#/runtime/this-firefox`
 2. Click **Load Temporary Add-on**
-3. Select the `manifest.json` file
+3. Select **`extension/manifest.json`**
 
 ## How to Use
 
 1. Visit any Patreon campaign page (creator page with `Recent Posts`)
-2. A small bar will appear at the top once posts are loaded
-3. Click **Download posts**
-4. (Optional) Click **Load more** and use the search box to filter
-5. Select the posts you want to export
-6. Click **Export EPUB**
+2. Click the extension's toolbar icon to open the post list
+3. (Optional) Click **Load more** and use the search box to filter
+4. Select the posts you want to export
+5. Click **Export EPUB**
 
 The EPUB file will download automatically.
 

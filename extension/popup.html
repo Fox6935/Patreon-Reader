@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="popup.css" />
+    <title>Patreon Reader</title>
+  </head>
+  <body>
+    <div id="prh-modal">
+      <div id="prh-modal-header">
+        <div class="prh-modal-top">
+          <div>
+            <strong>Download posts</strong>
+            <span id="prh-selection-summary"></span>
+          </div>
+          <input id="prh-search" type="text" placeholder="Search loaded posts..." />
+        </div>
+      </div>
+      <div id="prh-status"></div>
+      <div id="prh-modal-list"></div>
+      <div id="prh-modal-footer">
+        <button type="button" class="secondary" id="prh-load-more">
+          Load more
+        </button>
+        <button type="button" class="secondary" id="prh-select-all">
+          Select all
+        </button>
+        <button type="button" class="secondary" id="prh-select-none">
+          Deselect all
+        </button>
+        <div id="prh-progress"></div>
+        <button type="button" id="prh-export-epub">Export EPUB</button>
+      </div>
+    </div>
+    <script src="search.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
