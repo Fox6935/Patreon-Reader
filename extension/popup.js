@@ -45,10 +45,27 @@
     return `${yyyy}-${mm}-${dd}`;
   }
 
+  function getSafePostUrl(post) {
+    for (const value of [post.url, post.patreon_url]) {
+      if (typeof value !== "string" || !value) {
+        continue;
+      }
+
+      try {
+        const url = new URL(value, "https://www.patreon.com/");
+        if (url.protocol === "https:" || url.protocol === "http:") {
+          return url.href;
+        }
+      } catch {}
+    }
+
+    return null;
+  }
+
   function getFilteredPosts() {
     const posts = view.snap?.posts || [];
-    const groups = PRH.search.parseQuery(view.filterText);
-    if (!groups.length) {
+    const parsed = PRH.search.parseQuery(view.filterText);
+    if (!parsed.groups.length) {
       return posts;
     }
 
@@ -62,7 +79,7 @@
       ]
         .map((x) => x || "")
         .join("\n");
-      return PRH.search.matchHaystack(haystack, groups);
+      return PRH.search.matchHaystack(haystack, parsed);
     });
   }
 
@@ -128,13 +145,17 @@
     }
 
     const loaded = snap.posts.length;
-    const total = snap.totalPosts || "?";
+    const total = snap.totalPosts ?? "?";
     const filtered = getFilteredPosts();
     const selectedOutsideFilter = countSelectedOutsideFilter(filtered);
+    const skippedUnauthorized = snap.skippedUnauthorized || 0;
+    const skippedText = skippedUnauthorized
+      ? ` â€¢ ${skippedUnauthorized} locked skipped`
+      : "";
 
     const statusMain = snap.loading
       ? `Loading… ${loaded}/${total}`
-      : `${loaded}/${total} loaded`;
+      : `${loaded}/${total} loaded${skippedText}`;
 
     els.status.innerHTML =
       selectedOutsideFilter > 0
@@ -155,6 +176,7 @@
     els.list.innerHTML = "";
     for (const post of filtered) {
       const title = post.title || `Post ${post.id}`;
+      const postUrl = getSafePostUrl(post);
       const row = document.createElement("div");
       row.className = "prh-row";
       row.innerHTML = `
@@ -166,9 +188,13 @@
             ${post.post_type ? ` • ${escapeHtml(String(post.post_type))}` : ""}
           </div>
         </div>
-        <a href="${escapeHtml(post.url || post.patreon_url || "#")}"
-           target="_blank"
-           rel="noopener noreferrer">Open</a>
+        ${
+          postUrl
+            ? `<a href="${escapeHtml(postUrl)}"
+                 target="_blank"
+                 rel="noopener noreferrer">Open</a>`
+            : ""
+        }
       `;
 
       const checkbox = row.querySelector("input");
@@ -232,7 +258,11 @@
       }
     });
 
-    chrome.runtime.onMessage.addListener((message) => {
+    chrome.runtime.onMessage.addListener((message, sender) => {
+      if (sender.tab?.id !== view.tabId) {
+        return;
+      }
+
       if (message?.type === "PRH_PROGRESS") {
         els.progress.textContent = message.text || "";
         return;

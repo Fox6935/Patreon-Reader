@@ -5,7 +5,6 @@
   }
 
   window.__PRH_BRIDGE_INSTALLED__ = true;
-  window.__PRH_POSTS_QUEUE__ = window.__PRH_POSTS_QUEUE__ || [];
 
   if (!document.getElementById('prh-main-world-bridge')) {
     const script = document.createElement('script');
@@ -43,7 +42,6 @@
       text,
     };
 
-    window.__PRH_POSTS_QUEUE__.push(payload);
     window.postMessage(payload, "*");
   }
 

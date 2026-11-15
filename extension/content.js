@@ -14,6 +14,7 @@
     nextUrl: null,
     loading: false,
     includedByKey: new Map(),
+    unauthorizedPostIds: new Set(),
     filterText: "",
     currentUrl: location.href,
     hasSeenValidPostsResponse: false,
@@ -32,6 +33,7 @@
     STATE.nextUrl = null;
     STATE.loading = false;
     STATE.includedByKey = new Map();
+    STATE.unauthorizedPostIds = new Set();
     STATE.filterText = "";
     STATE.hasSeenValidPostsResponse = false;
   }
@@ -71,6 +73,7 @@
       totalPosts: STATE.totalPosts,
       canLoadMore: !!STATE.nextUrl && !STATE.loading,
       creatorName: STATE.creatorName,
+      skippedUnauthorized: STATE.unauthorizedPostIds.size,
       selectedIds: [...STATE.selectedPostIds],
       posts: trimmedPosts(),
     };
@@ -309,25 +312,7 @@
   }
 
   function installMessageListener() {
-    window.addEventListener("message", (event) => {
-      if (event.source !== window) {
-        return;
-      }
-
-      processPostsPayload(event.data);
-    });
-
-    const queued = Array.isArray(window.__PRH_POSTS_QUEUE__)
-      ? [...window.__PRH_POSTS_QUEUE__]
-      : [];
-
-    for (const item of queued) {
-      processPostsPayload(item);
-    }
-
-    if (Array.isArray(window.__PRH_POSTS_QUEUE__)) {
-      window.__PRH_POSTS_QUEUE__.length = 0;
-    }
+    root.bridgeListener.attach(processPostsPayload);
   }
 
   function installPopupBridge() {
@@ -388,9 +373,9 @@
   }
 
   function init() {
+    resetState();
     installMessageListener();
     installPopupBridge();
-    resetState();
     notifySnapshotChanged();
     installSpaWatcher();
   }

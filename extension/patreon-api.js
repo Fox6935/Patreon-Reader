@@ -2,21 +2,26 @@
   const root = (window.PRH = window.PRH || {});
 
   root.api = {
-    isPostsApiUrl(url) {
+    normalizePostsApiUrl(url) {
       if (typeof url !== "string") {
-        return false;
+        return null;
       }
 
       try {
         const u = new URL(url, location.href);
-        return (
+        const isPostsApiUrl =
           u.origin === "https://www.patreon.com" &&
           u.pathname === "/api/posts" &&
-          u.searchParams.get("json-api-version") === "1.0"
-        );
+          u.searchParams.get("json-api-version") === "1.0";
+
+        return isPostsApiUrl ? u.href : null;
       } catch {
-        return false;
+        return null;
       }
+    },
+
+    isPostsApiUrl(url) {
+      return this.normalizePostsApiUrl(url) !== null;
     },
 
     parsePostsResponseText(text) {
@@ -52,12 +57,27 @@
       return hasPaginationSignals;
     },
 
-    getPostsFromIndexResponse(json) {
+    canViewPost(post) {
+      const attrs = post?.attributes;
+      return (
+        attrs?.is_public === true || attrs?.current_user_can_view === true
+      );
+    },
+
+    getAllPostsFromIndexResponse(json) {
       if (!this.isPostsIndexResponse(json)) {
         return [];
       }
 
-      return (json.data || []).filter((item) => item?.type === "post" && item.attributes);
+      return (json.data || []).filter(
+        (item) => item?.type === "post" && item.attributes,
+      );
+    },
+
+    getPostsFromIndexResponse(json) {
+      return this.getAllPostsFromIndexResponse(json).filter((post) =>
+        this.canViewPost(post),
+      );
     },
 
     findPostsInResponse(json) {
@@ -148,7 +168,12 @@
           // posts can honor the active search filter.
           added += 1;
         } else {
+          const previous = state.postsById.get(post.id);
           state.postsById.set(post.id, post);
+          const index = state.loadedPosts.indexOf(previous);
+          if (index !== -1) {
+            state.loadedPosts[index] = post;
+          }
         }
       }
 
@@ -159,6 +184,7 @@
       if (!this.isPostsIndexResponse(json)) {
         return {
           postsAdded: 0,
+          postsSkipped: 0,
           campaignId: null,
           campaignName: null,
         };
@@ -166,11 +192,39 @@
 
       this.mergeIncluded(state, json);
 
-      const posts = this.getPostsFromIndexResponse(json);
+      const allPosts = this.getAllPostsFromIndexResponse(json);
+      const posts = allPosts.filter((post) => this.canViewPost(post));
+      const unauthorizedPosts = allPosts.filter(
+        (post) => !this.canViewPost(post),
+      );
+
+      for (const post of posts) {
+        state.unauthorizedPostIds.delete(post.id);
+      }
+
+      if (unauthorizedPosts.length) {
+        const unauthorizedIds = new Set(
+          unauthorizedPosts.map((post) => post.id),
+        );
+
+        for (const id of unauthorizedIds) {
+          state.unauthorizedPostIds.add(id);
+          state.postsById.delete(id);
+          state.selectedPostIds.delete(id);
+        }
+
+        state.loadedPosts = state.loadedPosts.filter(
+          (post) => !unauthorizedIds.has(post.id),
+        );
+      }
+
       const postsAdded = this.addPostsToState(state, posts);
 
-      state.nextUrl = typeof json?.links?.next === "string" ? json.links.next : null;
-      state.totalPosts = Number(json?.meta?.pagination?.total || 0);
+      state.nextUrl = this.normalizePostsApiUrl(json?.links?.next);
+      const reportedTotal = Number(json?.meta?.pagination?.total || 0);
+      state.totalPosts = Number.isFinite(reportedTotal)
+        ? Math.max(0, reportedTotal - state.unauthorizedPostIds.size)
+        : 0;
 
       const campaignId = this.extractCampaignIdFromResponse(json);
       const campaignName = this.extractCampaignNameFromResponse(json);
@@ -185,6 +239,7 @@
 
       return {
         postsAdded,
+        postsSkipped: unauthorizedPosts.length,
         campaignId,
         campaignName,
       };
