@@ -150,7 +150,7 @@
     const selectedOutsideFilter = countSelectedOutsideFilter(filtered);
     const skippedUnauthorized = snap.skippedUnauthorized || 0;
     const skippedText = skippedUnauthorized
-      ? ` â€¢ ${skippedUnauthorized} locked skipped`
+      ? ` • ${skippedUnauthorized} locked skipped`
       : "";
 
     const statusMain = snap.loading
