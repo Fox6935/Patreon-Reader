@@ -1,5 +1,7 @@
 (() => {
   const root = (window.PRH = window.PRH || {});
+  const LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
+  const IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
 
   function stripInvalidXmlChars(value) {
     const str = String(value ?? "");
@@ -80,6 +82,19 @@
     }
   }
 
+  function normalizeUrl(value, allowedProtocols) {
+    if (typeof value !== "string" || !value) {
+      return null;
+    }
+
+    try {
+      const url = new URL(value, "https://www.patreon.com/");
+      return allowedProtocols.has(url.protocol) ? url.href : null;
+    } catch {
+      return null;
+    }
+  }
+
   function getMark(node, type) {
     return (node.marks || []).find((m) => m.type === type) || null;
   }
@@ -104,7 +119,7 @@
     }
 
     const link = getMark(node, "link");
-    const href = link?.attrs?.href;
+    const href = normalizeUrl(link?.attrs?.href, LINK_PROTOCOLS);
     if (href) {
       text = `<a href="${escapeHtml(href)}">${text}</a>`;
     }
@@ -122,15 +137,23 @@
     const media = mediaId ? mediaFromId(state, mediaId) : null;
     const imageUrls = media?.attributes?.image_urls || {};
 
-    return (
-      attrs.src ||
-      media?.attributes?.download_url ||
-      imageUrls.original ||
-      imageUrls.default ||
-      imageUrls.large ||
-      imageUrls.thumbnail ||
-      ""
-    );
+    const candidates = [
+      attrs.src,
+      media?.attributes?.download_url,
+      imageUrls.original,
+      imageUrls.default,
+      imageUrls.large,
+      imageUrls.thumbnail,
+    ];
+
+    for (const candidate of candidates) {
+      const url = normalizeUrl(candidate, IMAGE_PROTOCOLS);
+      if (url) {
+        return url;
+      }
+    }
+
+    return "";
   }
 
   function buildImageRenderContext(state, post) {
@@ -181,7 +204,7 @@
       return "";
     }
 
-    const src = image.localPath || image.sourceUrl;
+    const src = image.localPath;
     if (!src) {
       return "";
     }

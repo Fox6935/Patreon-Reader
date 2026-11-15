@@ -13,6 +13,7 @@
     {
       "matches": ["https://www.patreon.com/*"],
       "js": [
+        "bridge-listener.js",
         "page-bridge.js",
         "patreon-api.js",
         "renderer.js",
